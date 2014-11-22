@@ -35,7 +35,8 @@ if (not defined $target)
 #************
 # 1. Open File
 # 2. Generate Filename - CamelCase & Remove Space
-# 3. Replace all TestCase Name with generated name
+# 3. Create tmp file with all the Test Cases Renamed
+# 3.1 Copy tmp file to target file
 # 4. Git Rename to the generated file name
 # 
 
@@ -53,30 +54,36 @@ my @RFTestScripts = `$cmd`;
 chomp @RFTestScripts;
 
 open(BFH,">rename.bat") or die $!;
+open(LFH,">TSMassUpdate.txt") or die $!;
+
+print LFH "TARGET: $target\n\n======================\n";
 foreach my $RF (@RFTestScripts)
 {
 	$basename = $RF;
+	# Extract basename
 	$basename =~ s/.*\/(.*)\.txt$/$1/g;
+	#Generate Prescribed Filename - i.e. CamelCase with No spaces
 	$CamelCaseTrimFn = trim_ws(CamelCase($basename));
-	
-	# 1. Open the file
-	# 
+	# Replace "/" with "\" for Windows
 	$RF =~ s/\//\\/g;
-	print "Opening $RF...\n\n";
+	
+	print LFH "Opening $RF...\n\n";
 	
 	$testcaseflag = 0;
 	open my $fh, '<', "$RF"  or die "$!";
 	open(WFH,">tmp.txt") or die $!;
+	
+	# Create tmp file
 	while ( my $line = <$fh>) {
 		if ($line =~ m/\*Test.*case/i) {
 			$testcaseflag = 1;
 		}
 		
-		# Extract Test Case Name 
+		# Extract Test Case Name then replace with the new name
 		if ( $line =~ m/^[^#\t\*].+/) {
 			if ($testcaseflag > 0) {
 				print WFH "$CamelCaseTrimFn\n";
-				#print "TESTCASE: $line\n";
+				print LFH "TESTCASE: $line\n";
 			} else {
 				print WFH $line;
 			}
@@ -92,21 +99,19 @@ foreach my $RF (@RFTestScripts)
 	
 	# Copy tmp file & overwrite
 	system("cp tmp.txt '$RF'");
-	# Recreate filename
+	# Generate new filename for git mv
 	$dirname  = dirname($RF);
 	$newfn = $dirname."\\".$CamelCaseTrimFn."\.txt";
+	# Had to write the file to a batch script since I'm encountering
+	# permission denied error when triggered directly from perl system cmd
 	print BFH "call $git mv \"$RF\" \"$newfn\n";
 	
 	
 }
+# Run the batch script that will rename everything
 system("rename.bat");
-
-
-
-#$fn = "LRN_TrainingCatalog_Tree View_AS for Curriculum Type_Cancel_by EMP";
-#$CamelCaseTrim = trim_ws(CamelCase($fn));
-#print $CamelCaseTrim;
-
+close BFH;
+close LFH;
 
 #######################################################################
 # Subroutine: trim_ws
@@ -135,7 +140,6 @@ sub CamelCase {
 #######################################################################
 sub Usage 
 { 
-
     print "IMPORTANT: You need to run this script inside the euHReka-Testing local repository!\n\n";
 	print "Usage:\n";
 	print "\t-t -Path to Target Folder relative to euHReka-Testing folder\n";
