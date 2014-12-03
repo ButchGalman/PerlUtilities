@@ -1,0 +1,110 @@
+***Settings***
+Resource	${CORE_FLOWS_DIR}/EOD_Master_Test_Flow.txt
+Library	String
+Test Teardown	Close Browser
+
+***Variable****
+${doc_link}=	Appr Doc N+2 (Free Corp-Team Goal).N (2)
+${buttonAction}=	Cancel
+***Test Cases***
+Pre-Requisite Performance
+
+	[tags]	perf_pre-req
+	[tags]	status:ci
+	
+	#@{userIds}=	Create List	GL_AU_MG069	GL_AU_MG070
+	#@{userIds}=	Create List	GL_PT_PMMG20
+	
+	#--- Pre-Requisite#1 ---#
+	# For GL_PT_PMMG01 - GL_PT_PMMG30
+	# Create ${doc_link} for all employees (50)
+	:FOR	${userId}	IN RANGE	1	2
+	\	${prepend}=	Set variable if	${userId} < 10	0	${EMPTY}
+	\	${mgr}=	Catenate	SEPARATOR=	GL_PT_PMMG	${prepend}	${userId}
+	\	Log	${mgr}
+	\	Create_Doc_For_EMP	${mgr}	${Password}	${doc_link}	${buttonAction}
+	
+	#--- Pre-Requisite#2 ---#
+	# For GL_PT_PMEE01 - GL_PT_PMEE15
+	# Create ${doc_link} for all employees (50)
+	#:FOR	${userId}	IN RANGE	1	2
+	#\	${prepend}=	Set variable if	${userId} < 10	0	${EMPTY}
+	#\	${emp}=	Catenate	SEPARATOR=	GL_PT_PMEE	${prepend}	${userId}
+	#\	Log	${emp}
+	#\	Create_Doc_For_EMP	${emp}	${Password}	${doc_link}	${buttonAction}
+
+	#--- Pre-Requisite#3 ---#
+	# For GL_PT_PMMG31 - GL_PT_PMMG50
+	# Create ${doc_link} for all employees (50)
+	#:FOR	${userId}	IN RANGE	31	34
+	#\	${prepend}=	Set variable if	${userId} < 10	0	${EMPTY}
+	#\	${mgr}=	Catenate	SEPARATOR=	GL_PT_PMMG	${prepend}	${userId}
+	#\	Log	${mgr}
+	#\	Create_Doc_For_EMP	${mgr}	${Password}	${doc_link}	${buttonAction}
+	
+
+*** Keyword ***
+Create_Doc_For_EMP
+	[Arguments]	${User}	${pword}	${linkdoc}	${action}
+		Login and Navigate	${User}	${pword}	Talent Management	Performance	Reviews	
+		euh wait until loaded
+		#Capture Page Screenshot
+		#${status}=	Run keyword and return status	Checkbox Should be Selected	css=.linedTree_checkIcon.linedTree_cursor.test_checkBox.linedTree_check0
+		#Run keyword if	'${status}' == 'False'	Click Element	css=.linedTree_checkIcon.linedTree_cursor.test_checkBox
+		
+		#euh set checkbox	OR:my_selection_euhreka_99	True	${None}	0
+		#Select checkbox	css=.linedTree_checkIcon.linedTree_cursor.test_checkBox
+		
+		euh wait until loaded
+		#Capture Page Screenshot
+		# Get Page Info (e.g. 1 of 3 )
+		${pageInfo}=	Get Element Attribute	css=span.pagination_infoLabel.test_label@innerHTML
+		# Extract the number of pages - i.e. 3
+		@{numPageArray}=	Split String	${pageInfo}	;
+		Log	${numPageArray[2]}
+		# Iterate the pages
+		:FOR	${pages}	IN RANGE	1	${numPageArray[2]}+1
+		\	Iterate_Employee_Create_Doc	${linkdoc}	${action}
+		\	Run Keyword if	${pages} < ${numPageArray[2]}	Click Element	//div[@id='mySelections_paginationDiv']/button[3]
+		euh EWS Logoff	Yes
+
+Iterate_Employee_Create_Doc
+	[Arguments]	${link}	${action}
+		${num_match}=	Get Matching Xpath Count	//li[*]/div/input
+		Run keyword if	${num_match} == 0	Select checkbox	css=.linedTree_checkIcon.linedTree_cursor.test_checkBox
+
+		:FOR	${index}	IN RANGE	1	${num_match}+1
+		\	${locator}=	Catenate	//li[	${index}	]/div/input
+		\	Click Element	${locator}
+		\	euh wait until loaded
+		\	euh click link	${link}	${None}	0
+		\	euh wait until loaded
+		#\	Capture Page Screenshot
+		\	${withDoc}=	Get Matching Xpath Count	//div[@id='IDOC_CANCEL']/button
+		\	Run keyword if	${withDoc} > 0	Click Element	//div[@id='IDOC_CANCEL']/button
+		#\	Run keyword if	${withDoc} > 0	euh Click button	Go back	${None}
+		\	euh wait until loaded
+		\	Run keyword if	${withDoc} == 0	Click Element	//div[@id='cancel']/button
+		#\	Run keyword if	${withDoc} == 0	euh click button	${action}	${None}
+		\	euh wait until loaded
+
+Iterate_Employee_Create_Multiple_Doc
+	[Arguments]	${action}	@{_multipleDocs}
+		${num_match}=	Get Matching Xpath Count	//li[*]/div/input
+		Run keyword if	${num_match} == 0	Select checkbox	css=.linedTree_checkIcon.linedTree_cursor.test_checkBox
+		:FOR	${index}	IN RANGE	1	${num_match}+1
+		\	${locator}=	Catenate	//li[	${index}	]/div/input
+		\	Click Element	${locator}
+		\	Iterate_Docs	@{_multipleDocs}	${action}
+
+Iterate_Docs
+	[Arguments]	@{multipleDocs}	${action}
+		:FOR	${doc}	IN	@{multipleDocs}
+		\	euh click link	${doc}	${None}	0
+		\	euh wait until loaded
+		#\	Capture Page Screenshot
+		\	${withDoc}=	Get Matching Xpath Count	//div[@id='IDOC_CANCEL']/button
+		\	Run keyword if	${withDoc} > 0	euh Click button	Go back	${None}
+		\	euh wait until loaded
+		\	Run keyword if	${withDoc} == 0	euh click button	${action}	${None}
+		\	euh wait until loaded
