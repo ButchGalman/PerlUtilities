@@ -1,0 +1,36 @@
+***Settings***
+Resource	${CORE_FLOWS_DIR}/EOD_Master_Test_Flow.txt
+Library	String
+Library	OperatingSystem
+
+**Variables**
+${TEST_USER_FILE}	../../../euHReka-Testing/AllTests/Test_User_Login_Test/dummy.txt
+${URL}	https://eq1.euhreka.com/sap/public/bc/ur/eWS/standard/newlogInPage.html?sap-client=800
+${PASSWORD}	test@007
+${BROWSER}	FF
+${OUTFILE}	LoginError.txt
+**Test Cases**
+Check_User_Logins
+	[TAGS]	check_test_user_login
+	${Username}=	Get File	${TEST_USER_FILE}
+	@{UsernamesArr}=	Split String	${Username}	\n
+	${ArraySize}=	Evaluate	len(@{UsernamesArr})
+	Set Selenium Implicit Wait	3
+	Run keyword and ignore error	Remove File	${OUTFILE}
+	:FOR	${index}	IN RANGE	0	${ArraySize}
+	\	${stat}	Run keyword and return status	User Login	${URL}	${BROWSER}	@{UsernamesArr}[${index}]	${PASSWORD}
+	\	Run keyword unless	${stat}	Close Browser
+	\	Run keyword unless	${stat}	Append to File	${OUTFILE}	@{UsernamesArr}[${index}]\n
+	
+
+** Keywords **
+User Login
+	[Arguments]	${URL}	${BROWSER}	${Username}	${Password}
+	Open Browser	${URL}	${BROWSER}
+	Maximize Browser Window
+	Input text	name	${Username}
+	Input text	password	${Password}
+	Click Element	id=loginButton
+	euh wait until loaded
+	wait until page contains element	xpath=//*[@id='logoButton']	10
+	euh EWS Logoff	Yes
