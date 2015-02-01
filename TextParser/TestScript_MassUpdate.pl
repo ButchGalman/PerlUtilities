@@ -17,8 +17,6 @@
 
 
 #use strict;
-# hotfix branch
-#2
 use Getopt::Long;
 use File::Basename;
 use Cwd;
